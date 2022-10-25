@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2021 the original author or authors.
+ * Copyright 2002-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -63,6 +63,7 @@ import org.springframework.util.StringUtils;
  * <p>Mainly intended for internal use within the framework.
  *
  * @author Juergen Hoeller
+ * @author Réda Housni Alaoui
  * @since 2.0
  */
 public abstract class EntityManagerFactoryUtils {
@@ -196,6 +197,28 @@ public abstract class EntityManagerFactoryUtils {
 	public static EntityManager doGetTransactionalEntityManager(
 			EntityManagerFactory emf, @Nullable Map<?, ?> properties, boolean synchronizedWithTransaction)
 			throws PersistenceException {
+		return doGetTransactionalEntityManager(emf, properties, synchronizedWithTransaction, true);
+	}
+
+	/**
+	 * Obtain a JPA EntityManager from the given factory. Is aware of a corresponding
+	 * EntityManager bound to the current thread, e.g. when using JpaTransactionManager.
+	 * <p>Same as {@code getEntityManager}, but throwing the original PersistenceException.
+	 * @param emf the EntityManagerFactory to create the EntityManager with
+	 * @param properties the properties to be passed into the {@code createEntityManager}
+	 * call (may be {@code null})
+	 * @param synchronizedWithTransaction whether to automatically join ongoing
+	 * transactions (according to the JPA 2.1 SynchronizationType rules)
+	 * @param createIfNeeded whether to create an {@link EntityManager} if no existing transactional one is found
+	 * @return the EntityManager, or {@code null} if none found
+	 * @throws jakarta.persistence.PersistenceException if the EntityManager couldn't be created
+	 * @see #getTransactionalEntityManager(jakarta.persistence.EntityManagerFactory)
+	 * @see JpaTransactionManager
+	 */
+	@Nullable
+	public static EntityManager doGetTransactionalEntityManager(
+			EntityManagerFactory emf, @Nullable Map<?, ?> properties, boolean synchronizedWithTransaction, boolean createIfNeeded)
+			throws PersistenceException {
 
 		Assert.notNull(emf, "No EntityManagerFactory specified");
 
@@ -247,6 +270,9 @@ public abstract class EntityManagerFactoryUtils {
 		}
 		else if (!TransactionSynchronizationManager.isSynchronizationActive()) {
 			// Indicate that we can't obtain a transactional EntityManager.
+			return null;
+		}
+		else if (!createIfNeeded) {
 			return null;
 		}
 
