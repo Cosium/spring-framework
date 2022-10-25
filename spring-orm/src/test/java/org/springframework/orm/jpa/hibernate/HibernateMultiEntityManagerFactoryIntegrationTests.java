@@ -23,24 +23,32 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.orm.jpa.AbstractContainerEntityManagerFactoryIntegrationTests;
 import org.springframework.orm.jpa.EntityManagerFactoryInfo;
+import org.springframework.orm.jpa.domain.Person;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionStatus;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * Hibernate-specific JPA tests with multiple EntityManagerFactory instances.
  *
  * @author Juergen Hoeller
+ * @author Réda Housni Alaoui
  */
 class HibernateMultiEntityManagerFactoryIntegrationTests extends AbstractContainerEntityManagerFactoryIntegrationTests {
 
 	@Autowired
 	private EntityManagerFactory entityManagerFactory2;
 
+	@Autowired
+	private PlatformTransactionManager transactionManager2;
+
 
 	@Override
 	protected String[] getConfigLocations() {
-		return new String[] {"/org/springframework/orm/jpa/hibernate/hibernate-manager-multi.xml",
+		return new String[]{"/org/springframework/orm/jpa/hibernate/hibernate-manager-multi.xml",
 				"/org/springframework/orm/jpa/memdb.xml"};
 	}
 
@@ -66,6 +74,21 @@ class HibernateMultiEntityManagerFactoryIntegrationTests extends AbstractContain
 		finally {
 			em.close();
 		}
+	}
+
+	@Test
+	public void testInstantiateAndSaveWithSharedEmProxyUnderTheWrongTransaction() {
+		endTransaction();
+		TransactionStatus transaction = this.transactionManager2.getTransaction(this.transactionDefinition);
+
+		assertThat(countRowsInTable("person")).as("Should be no people from previous transactions").isEqualTo(0);
+		Person person = new Person();
+		person.setFirstName("Tony");
+		person.setLastName("Blair");
+		assertThatThrownBy(() -> sharedEntityManager.persist(person))
+				.hasMessageContaining("No EntityManager with actual transaction available for current thread");
+
+		transactionManager2.rollback(transaction);
 	}
 
 }
