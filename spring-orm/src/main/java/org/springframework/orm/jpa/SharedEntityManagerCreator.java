@@ -61,6 +61,7 @@ import org.springframework.util.ConcurrentReferenceHashMap;
  * @author Oliver Gierke
  * @author Mark Paluch
  * @author Sam Brannen
+ * @author Réda Housni Alaoui
  * @since 2.0
  * @see jakarta.persistence.PersistenceContext
  * @see jakarta.persistence.PersistenceContextType#TRANSACTION
@@ -268,10 +269,9 @@ public abstract class SharedEntityManagerCreator {
 				}
 			}
 
-			// Determine current EntityManager: either the transactional one
-			// managed by the factory or a temporary one for the given invocation.
+			// Determine current EntityManager
 			EntityManager target = EntityManagerFactoryUtils.doGetTransactionalEntityManager(
-					this.targetFactory, this.properties, this.synchronizedWithTransaction);
+					this.targetFactory, this.properties, this.synchronizedWithTransaction, false);
 
 			switch (method.getName()) {
 				case "getTargetEntityManager" -> {
